@@ -1,0 +1,289 @@
+/* =========================================
+   โครงสร้างหลัก (พื้นหลัง & การจัดวาง)
+========================================= */
+.page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    #022c22,
+    #064e3b
+  ); /* พื้นหลังสีเขียวเข้ม AI */
+  font-family: "Prompt", sans-serif;
+  padding: 20px;
+}
+
+.login-container {
+  display: flex;
+  width: 100%;
+  max-width: 900px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 40px;
+}
+
+/* =========================================
+   ฝั่งซ้าย: โลโก้ และ แบรนด์
+========================================= */
+.brand-section {
+  flex: 1;
+  color: white;
+}
+
+.brand-logo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.brand-icon-logo {
+  font-size: 42px;
+  color: #4ade80;
+  filter: drop-shadow(0 0 10px rgba(74, 222, 128, 0.4));
+}
+
+.brand-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin: 0;
+  color: #4ade80;
+}
+
+.brand-description {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #d1fae5;
+}
+
+/* =========================================
+   ฝั่งขวา: การ์ดเข้าสู่ระบบสีขาว
+========================================= */
+.login-card {
+  flex: 1;
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
+  width: 100%;
+}
+
+.login-title {
+  font-size: 1.5rem;
+  color: #111827;
+  text-align: center;
+  margin-bottom: 8px;
+  margin-top: 0;
+}
+
+.login-subtitle {
+  text-align: center;
+  color: #6b7280;
+  margin-bottom: 24px;
+  font-size: 0.9rem;
+}
+
+/* =========================================
+   ฟอร์ม (ช่องกรอกข้อมูล & ปุ่ม)
+========================================= */
+.input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.input-icon-left {
+  position: absolute;
+  left: 14px;
+  color: #6b7280; /* ปรับสีไอคอนให้เข้มขึ้น อ่านง่าย */
+  font-size: 18px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.input-box input {
+  width: 100%;
+  padding: 12px 16px 12px 42px; /* เว้นที่ให้ไอคอนซ้าย */
+  background-color: #ffffff !important; /* ล็อกสีพื้นหลังขาว */
+  color: #1f2937 !important; /* ล็อกสีตัวอักษรเข้ม */
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  outline: none;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-sizing: border-box; /* สำคัญมาก ป้องกันช่องทะลุขอบ */
+}
+
+/* ป้องกันปัญหา Browser Autofill แล้วเปลี่ยนช่องเป็นสีดำ/เทา */
+.input-box input:-webkit-autofill,
+.input-box input:-webkit-autofill:hover,
+.input-box input:-webkit-autofill:focus,
+.input-box input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+  -webkit-text-fill-color: #1f2937 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.input-box input::placeholder {
+  color: #9ca3af;
+  opacity: 1;
+}
+
+.input-box input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  z-index: 2;
+}
+
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.custom-checkbox {
+  accent-color: #10b981;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.forgot-password {
+  font-size: 14px;
+  color: #10b981;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.login-button {
+  width: 100%;
+  padding: 12px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 24px;
+}
+
+.login-button:hover {
+  background: #059669;
+}
+
+/* =========================================
+   ส่วน Social Login และ Divider
+========================================= */
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.divider span {
+  padding: 0 10px;
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.social-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.social-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.social-btn:hover {
+  background: #f9fafb;
+}
+
+.social-icon {
+  font-size: 20px;
+}
+
+.line-icon {
+  color: #00b900;
+}
+
+.register-text {
+  text-align: center;
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0;
+}
+
+.register-text a {
+  color: #10b981;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* =========================================
+   Responsive (ปรับให้รองรับหน้าจอมือถือ)
+========================================= */
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+  }
+
+  .brand-section {
+    text-align: center;
+  }
+
+  .brand-logo-wrapper {
+    justify-content: center;
+  }
+}
