@@ -1,0 +1,190 @@
+"""
+เทรน CNN สำหรับจำแนกโรคใบทุเรียน 5 คลาส
+ใช้ Transfer Learning จาก MobileNetV2 (เบาและเร็ว เหมาะกับเครื่องที่ไม่มี GPU)
+
+วิธีรัน:
+    python train_model.py
+
+Output ที่ได้:
+    - durian_model.keras   -> ไฟล์โมเดลที่เทรนเสร็จแล้ว
+    - class_names.json     -> ชื่อคลาสเรียงตามลำดับ index ที่โมเดลใช้ (สำคัญมาก ต้องใช้ตอน predict)
+    - training_curve.png   -> กราฟ accuracy/loss ระหว่างเทรน
+    - test_report.txt      -> ผลประเมินบน test set (accuracy, precision, recall ต่อคลาส)
+"""
+
+import json
+import pathlib
+
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from sklearn.metrics import classification_report, confusion_matrix
+
+# ============================================================
+# 1) ตั้งค่า path ของ dataset — 
+# ============================================================
+# ตัวอย่างถ้า dataset ยังอยู่ตำแหน่งเดิมในโปรเจกต์:
+#   Projects/DurianDiseaseProject/src/assets/archive/DLD_FinalDataset_224_spit
+DATA_DIR = pathlib.Path("../DurianDiseaseProject/src/assets/archive/DLD_FinalDataset_224_spit")
+
+TRAIN_DIR = DATA_DIR / "train"
+VAL_DIR = DATA_DIR / "val"
+TEST_DIR = DATA_DIR / "test"
+
+IMG_SIZE = (224, 224)
+BATCH_SIZE = 32
+SEED = 42
+
+# ============================================================
+# 2) โหลดข้อมูลจากโฟลเดอร์ (ใช้โครงสร้างที่แบ่ง train/val/test ไว้แล้ว)
+# ============================================================
+train_ds = tf.keras.utils.image_dataset_from_directory(
+    TRAIN_DIR, image_size=IMG_SIZE, batch_size=BATCH_SIZE, seed=SEED, shuffle=True
+)
+val_ds = tf.keras.utils.image_dataset_from_directory(
+    VAL_DIR, image_size=IMG_SIZE, batch_size=BATCH_SIZE, seed=SEED, shuffle=False
+)
+test_ds = tf.keras.utils.image_dataset_from_directory(
+    TEST_DIR, image_size=IMG_SIZE, batch_size=BATCH_SIZE, seed=SEED, shuffle=False
+)
+
+class_names = train_ds.class_names
+print("คลาสที่พบ:", class_names)
+
+# บันทึกชื่อคลาสไว้ใช้ตอน predict (ลำดับต้องตรงกับตอนเทรนเป๊ะ ๆ)
+with open("class_names.json", "w", encoding="utf-8") as f:
+    json.dump(class_names, f, ensure_ascii=False, indent=2)
+
+# เก็บ test labels ไว้ก่อน prefetch จะทำให้ดึงยากขึ้น
+y_true = tf.concat([y for _, y in test_ds], axis=0).numpy()
+
+# เพิ่มความเร็วในการโหลดข้อมูล
+AUTOTUNE = tf.data.AUTOTUNE
+train_ds = train_ds.prefetch(AUTOTUNE)
+val_ds = val_ds.prefetch(AUTOTUNE)
+test_ds_eval = test_ds.prefetch(AUTOTUNE)
+
+# ============================================================
+# 3) Data augmentation — ช่วยกัน overfitting เพราะข้อมูลมีจำกัด
+# ============================================================
+data_augmentation = tf.keras.Sequential(
+    [
+        tf.keras.layers.RandomFlip("horizontal"),
+        tf.keras.layers.RandomRotation(0.15),
+        tf.keras.layers.RandomZoom(0.15),
+        tf.keras.layers.RandomContrast(0.1),
+    ],
+    name="data_augmentation",
+)
+
+# ============================================================
+# 4) สร้างโมเดล: MobileNetV2 (pretrained บน ImageNet) + หัวจำแนกใหม่
+# ============================================================
+base_model = tf.keras.applications.MobileNetV2(
+    input_shape=IMG_SIZE + (3,), include_top=False, weights="imagenet"
+)
+base_model.trainable = False  # เฟส 1: freeze base ไว้ก่อน เทรนแค่หัวใหม่ (เร็ว เหมาะกับ CPU)
+
+inputs = tf.keras.Input(shape=IMG_SIZE + (3,))
+x = data_augmentation(inputs)
+x = tf.keras.applications.mobilenet_v2.preprocess_input(x)
+x = base_model(x, training=False)
+x = tf.keras.layers.GlobalAveragePooling2D()(x)
+x = tf.keras.layers.Dropout(0.3)(x)
+x = tf.keras.layers.Dense(128, activation="relu")(x)
+x = tf.keras.layers.Dropout(0.2)(x)
+outputs = tf.keras.layers.Dense(len(class_names), activation="softmax")(x)
+
+model = tf.keras.Model(inputs, outputs)
+
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+    loss="sparse_categorical_crossentropy",
+    metrics=["accuracy"],
+)
+
+model.summary()
+
+callbacks = [
+    tf.keras.callbacks.EarlyStopping(
+        monitor="val_accuracy", patience=5, restore_best_weights=True
+    ),
+    tf.keras.callbacks.ModelCheckpoint(
+        "durian_model.keras", monitor="val_accuracy", save_best_only=True
+    ),
+]
+
+# ============================================================
+# 5) เฟส 1: เทรนเฉพาะหัวจำแนก (base model ถูก freeze)
+# ============================================================
+print("\n=== เฟส 1: เทรนหัวจำแนก (base model freeze) ===")
+history1 = model.fit(train_ds, validation_data=val_ds, epochs=15, callbacks=callbacks)
+
+# ============================================================
+# 6) เฟส 2 (fine-tuning): ปลด freeze บางเลเยอร์ท้าย ๆ ของ base model
+#    แล้วเทรนต่อด้วย learning rate ต่ำมาก เพื่อปรับ feature ให้เข้ากับใบทุเรียน
+# ============================================================
+print("\n=== เฟส 2: Fine-tuning ===")
+base_model.trainable = True
+# freeze เลเยอร์ต้น ๆ ไว้ ปลดแค่ท้าย ๆ (ประมาณ 30 เลเยอร์สุดท้าย)
+for layer in base_model.layers[:-30]:
+    layer.trainable = False
+
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),  # LR ต่ำมาก กัน weight พัง
+    loss="sparse_categorical_crossentropy",
+    metrics=["accuracy"],
+)
+
+history2 = model.fit(
+    train_ds,
+    validation_data=val_ds,
+    epochs=10,
+    callbacks=callbacks,
+)
+
+# ============================================================
+# 7) ประเมินผลบน test set (ข้อมูลที่โมเดลไม่เคยเห็นเลย)
+# ============================================================
+print("\n=== ประเมินผลบน test set ===")
+test_loss, test_acc = model.evaluate(test_ds_eval)
+print(f"Test accuracy: {test_acc:.4f}")
+
+y_pred_probs = model.predict(test_ds_eval)
+y_pred = y_pred_probs.argmax(axis=1)
+
+report = classification_report(y_true, y_pred, target_names=class_names)
+cm = confusion_matrix(y_true, y_pred)
+
+print(report)
+print("Confusion matrix:\n", cm)
+
+with open("test_report.txt", "w", encoding="utf-8") as f:
+    f.write(f"Test accuracy: {test_acc:.4f}\n\n")
+    f.write(report)
+    f.write("\n\nConfusion matrix:\n")
+    f.write(str(cm))
+
+# ============================================================
+# 8) พล็อตกราฟ training curve
+# ============================================================
+acc = history1.history["accuracy"] + history2.history["accuracy"]
+val_acc = history1.history["val_accuracy"] + history2.history["val_accuracy"]
+loss = history1.history["loss"] + history2.history["loss"]
+val_loss = history1.history["val_loss"] + history2.history["val_loss"]
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+axes[0].plot(acc, label="train")
+axes[0].plot(val_acc, label="val")
+axes[0].axvline(len(history1.history["accuracy"]), color="gray", linestyle="--", label="fine-tune start")
+axes[0].set_title("Accuracy")
+axes[0].legend()
+
+axes[1].plot(loss, label="train")
+axes[1].plot(val_loss, label="val")
+axes[1].axvline(len(history1.history["loss"]), color="gray", linestyle="--", label="fine-tune start")
+axes[1].set_title("Loss")
+axes[1].legend()
+
+plt.tight_layout()
+plt.savefig("training_curve.png")
+print("\n✅ เสร็จแล้ว! ไฟล์ที่ได้: durian_model.keras, class_names.json, training_curve.png, test_report.txt")

@@ -1,0 +1,22 @@
+Test accuracy: 0.7989
+Test accuracy (%): 79.89%
+
+                     precision    recall  f1-score   support
+
+    ALGAL_LEAF_SPOT     0.7600    0.7755    0.7677       147
+ALLOCARIDARA_ATTACK     0.7952    0.9126    0.8499       183
+       HEALTHY_LEAF     0.7973    0.9031    0.8469       196
+        LEAF_BLIGHT     0.8485    0.7447    0.7932       188
+PHOMOPSIS_LEAF_SPOT     0.7902    0.6420    0.7085       176
+
+           accuracy                         0.7989       890
+          macro avg     0.7982    0.7956    0.7932       890
+       weighted avg     0.8001    0.7989    0.7957       890
+
+
+Confusion matrix:
+[[114  16   4   6   7]
+ [  9 167   3   1   3]
+ [  3   1 177   6   9]
+ [ 11  13  13 140  11]
+ [ 13  13  25  12 113]]
