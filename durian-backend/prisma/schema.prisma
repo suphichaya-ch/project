@@ -1,0 +1,50 @@
+// prisma/schema.prisma
+// โครงสร้างฐานข้อมูล PostgreSQL ของ DurianCare AI
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// ผู้ใช้งานระบบ
+// ============================================================
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  history AnalysisHistory[]
+
+  @@map("users")
+}
+
+// ============================================================
+// ประวัติการวิเคราะห์โรค
+// ============================================================
+
+model AnalysisHistory {
+  id                String   @id @default(uuid())
+  userId            String?  @map("user_id")
+  imageUrl          String   @map("image_url")
+  diseaseName       String   @map("disease_name")
+  confidence        Float
+  symptoms          String   @db.Text
+  treatment         String   @db.Text
+  isDiseaseDetected Boolean  @map("is_disease_detected")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("analysis_history")
+}
